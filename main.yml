@@ -1,0 +1,62 @@
+name: RDP
+on:
+  workflow_dispatch: # allows manual trigger
+  push:
+    branches: [ main ]
+
+jobs:
+  windows11-runner:
+    name: Run on Windows 11 (with Tailscale)
+    runs-on: windows-latest   # GitHub's latest Windows 11 environment
+
+    steps:
+      - name: 🧩 Checkout Repository
+        uses: actions/checkout@v4
+
+      # -------------------------------------
+      # Install Tailscale
+      # -------------------------------------
+      - name: ⚙️ Install Tailscale
+        shell: pwsh
+        run: |
+          Write-Host "Installing Tailscale..."
+          choco install tailscale -y
+          tailscale version
+
+      # -------------------------------------
+      # Connect to Tailscale
+      # -------------------------------------
+      - name: 🔐 Authenticate to Tailscale Network
+        shell: pwsh
+        env:
+          TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
+        run: |
+          Write-Host "Bringing Tailscale up..."
+          tailscale up --authkey $env:TAILSCALE_AUTHKEY --hostname "github-runner-win11" --accept-routes=true
+          Write-Host "Tailscale connection established."
+          tailscale status
+          tailscale ip -4
+
+      # -------------------------------------
+      # Run your custom commands here
+      # -------------------------------------
+      - name: 🚀 Run Your Custom Commands
+        shell: pwsh
+        run: |
+          Write-Host "Now connected via Tailscale!"
+          # Example internal service test (optional)
+          # curl http://100.x.x.x:8080/health
+          # Example: run a PowerShell script or build
+          dir
+          Write-Host "Windows 11 runner is working fine."
+
+      # -------------------------------------
+      # Disconnect and clean up
+      # -------------------------------------
+      - name: 🧹 Logout from Tailscale
+        if: always()
+        shell: pwsh
+        run: |
+          Write-Host "Logging out from Tailscale..."
+          tailscale logout
+          Write-Host "Tailscale session ended."
