@@ -1,63 +1,57 @@
-name: RDP
+name: Windows 11 with Tailscale Access (Fixed)
 
 on:
-  workflow_dispatch: # allows manual trigger
+  workflow_dispatch:
   push:
     branches: [ main ]
 
 jobs:
   windows11-runner:
-    name: Run on Windows 11 (with Tailscale)
-    runs-on: windows-latest   # GitHub's latest Windows 11 environment
+    name: Run on Windows 11 (Tailscale Ready)
+    runs-on: windows-latest
 
     steps:
       - name: 🧩 Checkout Repository
         uses: actions/checkout@v4
 
-      # -------------------------------------
-      # Install Tailscale
-      # -------------------------------------
-      - name: ⚙️ Install Tailscale
+      - name: ⚙️ Install Tailscale via Chocolatey
         shell: pwsh
         run: |
           Write-Host "Installing Tailscale..."
           choco install tailscale -y
+          Write-Host "Installation complete."
+          Write-Host "Adding Tailscale to PATH..."
+          $env:Path += ";C:\Program Files\Tailscale"
+          if (Test-Path "C:\Program Files\Tailscale\tailscale.exe") {
+            Write-Host "✅ Tailscale found."
+          } else {
+            Write-Host "❌ Tailscale not found."
+          }
           tailscale version
 
-      # -------------------------------------
-      # Connect to Tailscale
-      # -------------------------------------
-      - name: 🔐 Authenticate to Tailscale Network
+      - name: 🔐 Authenticate to Tailscale
         shell: pwsh
         env:
           TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
         run: |
           Write-Host "Bringing Tailscale up..."
+          $env:Path += ";C:\Program Files\Tailscale"
           tailscale up --authkey $env:TAILSCALE_AUTHKEY --hostname "github-runner-win11" --accept-routes=true
-          Write-Host "Tailscale connection established."
           tailscale status
           tailscale ip -4
 
-      # -------------------------------------
-      # Run your custom commands here
-      # -------------------------------------
-      - name: 🚀 Run Your Custom Commands
+      - name: 🚀 Run Custom Commands
         shell: pwsh
         run: |
-          Write-Host "Now connected via Tailscale!"
-          # Example internal service test (optional)
-          # curl http://100.x.x.x:8080/health
-          # Example: run a PowerShell script or build
+          $env:Path += ";C:\Program Files\Tailscale"
+          Write-Host "Connected successfully to Tailscale network!"
           dir
-          Write-Host "Windows 11 runner is working fine."
 
-      # -------------------------------------
-      # Disconnect and clean up
-      # -------------------------------------
       - name: 🧹 Logout from Tailscale
         if: always()
         shell: pwsh
         run: |
+          $env:Path += ";C:\Program Files\Tailscale"
           Write-Host "Logging out from Tailscale..."
           tailscale logout
           Write-Host "Tailscale session ended."
